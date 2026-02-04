@@ -1,0 +1,16 @@
+resource_group_name = "aro-rg"
+location            = "japaneast"
+
+vnet_name           = "aro-vnet"
+vnet_address_space  = ["10.0.0.0/16"]
+
+master_subnet_name              = "aro-master-subnet"
+master_subnet_address_prefixes  = ["10.0.1.0/24"]
+
+worker_subnet_name              = "aro-worker-subnet"
+worker_subnet_address_prefixes  = ["10.0.2.0/24"]
+
+tags = {
+  Environment = "development"
+  Project     = "mta-workshop"
+}

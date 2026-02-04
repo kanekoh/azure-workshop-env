@@ -1,0 +1,27 @@
+# Environment files
+env.sh
+*.env
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+terraform.tfvars
+terraform.tfplan
+*.tfplan
+
+# Ansible
+ansible/inventory/cluster_info.json
+*.retry
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db

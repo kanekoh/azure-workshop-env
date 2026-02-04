@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: mta-aro-app-of-apps
+  namespace: openshift-gitops
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/kanekoh/azure-workshop-env
+    targetRevision: main
+    path: gitops/environments/mta_aro/apps
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: mta_aro
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

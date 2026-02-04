@@ -1,0 +1,44 @@
+---
+- name: Create ConfigMap for Azure Managed Identity (if needed)
+  k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: azure-config
+        namespace: openshift-config
+      data:
+        azure_managed_identity_id: "{{ azure_managed_identity_id | default('') }}"
+        azure_subscription_id: "{{ azure_subscription_id | default('') }}"
+        azure_resource_group: "{{ azure_resource_group | default('') }}"
+  when: azure_managed_identity_id is defined
+
+- name: Create Tackle Secret (placeholder)
+  k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: tackle-secret
+        namespace: konveyor-tackle
+      type: Opaque
+      stringData:
+        # Add Tackle-specific secrets here
+        placeholder: "value"
+  when: tackle_secret is defined
+
+- name: Create ODH storage configuration (placeholder)
+  k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: odh-storage-config
+        namespace: redhat-ods-operator
+      data:
+        # Add ODH storage configuration here
+        placeholder: "value"
+  when: odh_storage_config is defined

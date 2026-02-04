@@ -1,0 +1,29 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: environments
+  namespace: openshift-gitops
+spec:
+  generators:
+    - list:
+        elements:
+          - env: mta_aro
+  template:
+    metadata:
+      name: '{{env}}-apps'
+      namespace: openshift-gitops
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/kanekoh/azure-workshop-env
+        targetRevision: main
+        path: gitops/environments/{{env}}/apps
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: '{{env}}'
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true

@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: azure-config
+  namespace: openshift-config
+data:
+  azure_managed_identity_id: ""
+  azure_subscription_id: ""
+  azure_resource_group: ""
+  # Note: These values should be populated by Ansible or manually

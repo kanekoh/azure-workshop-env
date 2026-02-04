@@ -1,0 +1,44 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: operators
+  namespace: openshift-gitops
+spec:
+  generators:
+    - list:
+        elements:
+          - name: nfd-operator
+            namespace: openshift-nfd
+          - name: nvidia-operator
+            namespace: nvidia-gpu-operator
+          - name: odh-operator
+            namespace: redhat-ods-operator
+          - name: authorino-operator
+            namespace: authorino-operator
+          - name: devspaces-operator
+            namespace: openshift-devspaces
+          - name: cnpg-operator
+            namespace: cloud-native-postgresql
+          - name: keycloak-operator
+            namespace: keycloak-operator
+          - name: mta-operator
+            namespace: konveyor-tackle
+  template:
+    metadata:
+      name: '{{name}}'
+      namespace: openshift-gitops
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/kanekoh/azure-workshop-env
+        targetRevision: main
+        path: gitops/operators/{{name}}
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: '{{namespace}}'
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true

@@ -1,0 +1,60 @@
+---
+- name: Check if HTPasswd IDP exists
+  command: oc get oauth cluster -o jsonpath='{.spec.identityProviders[*].name}'
+  register: existing_idps
+  changed_when: false
+  failed_when: false
+
+- name: Create HTPasswd secret
+  k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: htpasswd-secret
+        namespace: openshift-config
+      type: Opaque
+      stringData:
+        htpasswd: "{{ htpasswd_content | default('') }}"
+  when: ocp_admin_user is defined and ocp_admin_password is defined
+  vars:
+    htpasswd_content: "{{ lookup('pipe', 'htpasswd -nbB ' + ocp_admin_user + ' ' + ocp_admin_password) }}"
+
+- name: Create HTPasswd IDP
+  k8s:
+    state: present
+    definition:
+      apiVersion: config.openshift.io/v1
+      kind: OAuth
+      metadata:
+        name: cluster
+      spec:
+        identityProviders:
+          - name: htpasswd
+            type: HTPasswd
+            htpasswd:
+              fileData:
+                name: htpasswd-secret
+            mappingMethod: claim
+  when: ocp_admin_user is defined and ocp_admin_password is defined and existing_idps.stdout.find('htpasswd') == -1
+
+- name: Grant cluster-admin role to admin user
+  command: >
+    oc adm policy add-cluster-role-to-user cluster-admin {{ ocp_admin_user }}
+  when: ocp_admin_user is defined
+  failed_when: false
+
+- name: Create workshop users
+  command: >
+    oc create user {{ item }}
+  loop: "{{ workshop_users | default([]) | split(',') }}"
+  when: workshop_users is defined
+  failed_when: false
+
+- name: Grant basic-user role to workshop users
+  command: >
+    oc adm policy add-role-to-user basic-user {{ item }}
+  loop: "{{ workshop_users | default([]) | split(',') }}"
+  when: workshop_users is defined
+  failed_when: false

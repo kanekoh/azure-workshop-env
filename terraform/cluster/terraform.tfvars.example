@@ -1,0 +1,30 @@
+# These values should come from network phase outputs
+resource_group_name = "aro-rg"
+location            = "japaneast"
+vnet_id             = "/subscriptions/.../resourceGroups/aro-rg/providers/Microsoft.Network/virtualNetworks/aro-vnet"
+master_subnet_id    = "/subscriptions/.../resourceGroups/aro-rg/providers/Microsoft.Network/virtualNetworks/aro-vnet/subnets/aro-master-subnet"
+worker_subnet_id    = "/subscriptions/.../resourceGroups/aro-rg/providers/Microsoft.Network/virtualNetworks/aro-vnet/subnets/aro-worker-subnet"
+
+# Cluster configuration
+cluster_name = "mta-aro"
+domain       = "" # Optional: custom domain
+ocp_version  = "4.14"
+
+# Node configuration
+master_vm_size   = "Standard_D8s_v3"
+master_disk_size = 128
+worker_vm_size   = "Standard_D4s_v3"
+worker_disk_size = 128
+worker_count     = 3
+
+# Network CIDR
+pod_cidr     = "10.128.0.0/14"
+service_cidr = "172.30.0.0/16"
+
+# Pull secret (optional, can be set via environment variable)
+# pull_secret = ""
+
+tags = {
+  Environment = "development"
+  Project     = "mta-workshop"
+}

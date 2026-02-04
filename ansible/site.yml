@@ -1,0 +1,53 @@
+---
+- name: Configure ARO Cluster
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    cluster_info_file: "{{ playbook_dir }}/inventory/cluster_info.json"
+    
+  tasks:
+    - name: Load cluster information
+      set_fact:
+        cluster_info: "{{ lookup('file', cluster_info_file) | from_json }}"
+      when: cluster_info_file is file
+
+    - name: Display cluster information
+      debug:
+        msg:
+          - "Cluster: {{ cluster_info.cluster_name }}"
+          - "API Server: {{ cluster_info.api_server_url }}"
+          - "Console: {{ cluster_info.console_url }}"
+
+    - name: Login to OpenShift cluster
+      command: >
+        oc login {{ cluster_info.api_server_url }}
+        -u {{ cluster_info.admin_username }}
+        -p {{ cluster_info.admin_password }}
+        --insecure-skip-tls-verify
+      register: oc_login
+      changed_when: false
+
+    - name: Verify cluster access
+      command: oc whoami
+      register: oc_whoami
+      changed_when: false
+
+    - name: Display current user
+      debug:
+        msg: "Logged in as: {{ oc_whoami.stdout }}"
+
+    - name: Include HTPasswd IDP configuration
+      include_role:
+        name: openshift_idp
+      when: oc_whoami.rc == 0
+
+    - name: Include OpenShift GitOps installation
+      include_role:
+        name: openshift_gitops
+      when: oc_whoami.rc == 0
+
+    - name: Include ConfigMap and Secret configuration
+      include_role:
+        name: openshift_config
+      when: oc_whoami.rc == 0

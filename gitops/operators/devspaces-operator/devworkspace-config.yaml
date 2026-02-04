@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: devworkspace-config
+  namespace: openshift-devspaces
+data:
+  # Azure Managed Identity configuration (replaces AWS IAM Role ARN)
+  azure.managed_identity.client_id: ""
+  # Note: This should be populated with Azure Managed Identity Client ID
