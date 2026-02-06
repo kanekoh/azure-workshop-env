@@ -28,22 +28,39 @@
 - `jq` (JSON処理用)
 - `htpasswd` (HTPasswd IDP用)
 
-### Azure CLI認証
+### Azure認証
 
-Azure CLIで認証を行います：
+#### Option 1: Red Hat Demo Platform (RHDP) 変数名を使用（推奨）
+
+RHDPから変数をコピペするだけで使用できます：
 
 ```bash
-az login
-az account set --subscription <subscription-id>
+export CLIENT_ID="<client-id>"
+export PASSWORD="<client-secret>"
+export TENANT="<tenant-id-or-domain>"  # テナントID（GUID）またはドメイン名（例: redhat0.onmicrosoft.com）
+export SUBSCRIPTION="<subscription-id>"
+export RESOURCEGROUP="<resource-group-name>"
+export GUID="<guid>"  # オプション: リソース名生成用
 ```
 
-または、Service Principalを使用する場合：
+これらの変数は自動的に`ARM_*`変数にマッピングされ、Terraformで使用されます。**`az login`は不要です。**
+
+#### Option 2: ARM_*変数名を使用
 
 ```bash
 export ARM_SUBSCRIPTION_ID="<subscription-id>"
 export ARM_TENANT_ID="<tenant-id>"
 export ARM_CLIENT_ID="<client-id>"
 export ARM_CLIENT_SECRET="<client-secret>"
+```
+
+#### Option 3: Azure CLI認証
+
+Service Principalを使用しない場合は、Azure CLIで認証を行います：
+
+```bash
+az login
+az account set --subscription <subscription-id>
 ```
 
 ### Azure リソースプロバイダーの登録
@@ -56,6 +73,14 @@ az provider register -n Microsoft.Compute --wait
 az provider register -n Microsoft.Storage --wait
 az provider register -n Microsoft.Authorization --wait
 ```
+
+### ARO リソースプロバイダーの権限
+
+AROのリソースプロバイダー(Service Principal)にVNetへの権限が必要です。  
+このリポジトリでは`terraform/network`でVNetに`Network Contributor`を付与します。
+
+環境によってはAzure ADの参照権限がない場合があるため、その場合は
+`aro_rp_service_principal_object_id`を`terraform/network/terraform.tfvars`に指定してください。
 
 ### vCPU クォータの確認
 
@@ -80,8 +105,9 @@ cp env.sh.example env.sh
 
 主要な環境変数：
 
-- **Azure認証**: `ARM_SUBSCRIPTION_ID`, `ARM_TENANT_ID`, `ARM_CLIENT_ID`, `ARM_CLIENT_SECRET`
-- **リソース設定**: `AZURE_RESOURCE_GROUP`, `AZURE_REGION`, `AZURE_VNET_NAME`
+- **Azure認証（RHDP変数名）**: `CLIENT_ID`, `PASSWORD`, `TENANT`, `SUBSCRIPTION`, `RESOURCEGROUP`, `GUID`
+  - または **ARM_*変数名**: `ARM_SUBSCRIPTION_ID`, `ARM_TENANT_ID`, `ARM_CLIENT_ID`, `ARM_CLIENT_SECRET`
+- **リソース設定**: `AZURE_RESOURCE_GROUP` (または `RESOURCEGROUP`), `AZURE_REGION`, `AZURE_VNET_NAME`
 - **クラスター設定**: `ARO_CLUSTER_NAME`, `ARO_OCP_VERSION`, `ARO_MASTER_VM_SIZE`, `ARO_WORKER_VM_SIZE`
 - **GitOps設定**: `GITOPS_ENV` (例: `mta_aro`)
 - **Ansible設定**: `RUN_ANSIBLE` (true/false)
@@ -105,8 +131,8 @@ ansible-galaxy collection install -r requirements.yml
 
 このスクリプトは以下の処理を実行します：
 
-1. 環境変数の読み込み
-2. Azure CLI認証確認
+1. 環境変数の読み込み（RHDP変数名を`ARM_*`変数に自動マッピング）
+2. Azure認証確認（Service Principalが設定されている場合は`az login`不要）
 3. Phase 1: ネットワーク構築
 4. Phase 2: AROクラスター構築
 5. クラスターアクセス確認

@@ -29,15 +29,14 @@ variable "cluster_name" {
 }
 
 variable "domain" {
-  description = "Domain name for the cluster"
+  description = "Domain name for the cluster (required, will be generated from GUID if not provided)"
   type        = string
-  default     = ""
 }
 
 variable "ocp_version" {
-  description = "OpenShift Container Platform version"
+  description = "OpenShift Container Platform version in x.y.z format (e.g., 4.19.20)"
   type        = string
-  default     = "4.14"
+  default     = "4.19.20"
 }
 
 variable "master_vm_size" {
@@ -86,6 +85,12 @@ variable "pull_secret" {
   description = "Red Hat pull secret (optional, can be set via environment variable)"
   type        = string
   default     = ""
+  sensitive   = true
+}
+
+variable "service_principal_client_secret" {
+  description = "Service Principal client secret for ARO (required)"
+  type        = string
   sensitive   = true
 }
 

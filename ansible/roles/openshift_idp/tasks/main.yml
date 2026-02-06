@@ -45,16 +45,26 @@
   when: ocp_admin_user is defined
   failed_when: false
 
-- name: Create workshop users
-  command: >
-    oc create user {{ item }}
-  loop: "{{ workshop_users | default([]) | split(',') }}"
-  when: workshop_users is defined
-  failed_when: false
+# Workshop users creation - DISABLED (using kubeadmin only)
+# - name: Normalize workshop users list
+#   set_fact:
+#     workshop_users_list: >-
+#       {{
+#         (workshop_users | default([]))
+#         if (workshop_users is iterable and workshop_users is not string)
+#         else (workshop_users | default('') | split(','))
+#       }}
 
-- name: Grant basic-user role to workshop users
-  command: >
-    oc adm policy add-role-to-user basic-user {{ item }}
-  loop: "{{ workshop_users | default([]) | split(',') }}"
-  when: workshop_users is defined
-  failed_when: false
+# - name: Create workshop users
+#   command: >
+#     oc create user {{ item }}
+#   loop: "{{ workshop_users_list }}"
+#   when: workshop_users_list | length > 0
+#   failed_when: false
+
+# - name: Grant basic-user role to workshop users
+#   command: >
+#     oc adm policy add-role-to-user basic-user {{ item }}
+#   loop: "{{ workshop_users_list }}"
+#   when: workshop_users_list | length > 0
+#   failed_when: false

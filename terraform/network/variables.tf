@@ -3,8 +3,14 @@ variable "resource_group_name" {
   type        = string
 }
 
+variable "resource_group_create" {
+  description = "Whether to create the resource group (false if it already exists)"
+  type        = bool
+  default     = true
+}
+
 variable "location" {
-  description = "Azure region for resources"
+  description = "Azure region for resources (ignored if resource group already exists)"
   type        = string
   default     = "japaneast"
 }
@@ -43,6 +49,17 @@ variable "worker_subnet_address_prefixes" {
   description = "Address prefixes for the worker subnet"
   type        = list(string)
   default     = ["10.0.2.0/24"]
+}
+
+variable "aro_rp_service_principal_object_id" {
+  description = "Object ID for ARO resource provider service principal (optional, will be looked up if not provided)"
+  type        = string
+  default     = ""
+}
+
+variable "aro_rp_service_principal_client_id" {
+  description = "Client ID (application ID) for ARO resource provider service principal"
+  type        = string
 }
 
 variable "tags" {

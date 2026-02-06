@@ -1,45 +1,7 @@
 ---
-- name: Check if OpenShift GitOps operator is installed
-  command: oc get subscription openshift-gitops-operator -n openshift-operators -o json
-  register: gitops_subscription
-  changed_when: false
-  failed_when: false
+# Main tasks file for OpenShift GitOps role
+- name: Install OpenShift GitOps Operator
+  include_tasks: install_operator.yml
 
-- name: Create OpenShift GitOps Operator subscription
-  k8s:
-    state: present
-    definition:
-      apiVersion: operators.coreos.com/v1alpha1
-      kind: Subscription
-      metadata:
-        name: openshift-gitops-operator
-        namespace: openshift-operators
-      spec:
-        channel: stable
-        name: openshift-gitops-operator
-        source: redhat-operators
-        sourceNamespace: openshift-marketplace
-        installPlanApproval: Automatic
-  when: gitops_subscription.rc != 0
-
-- name: Wait for ArgoCD instance to be ready
-  command: oc get argocd openshift-gitops -n openshift-gitops -o json
-  register: argocd_instance
-  until: argocd_instance.rc == 0
-  retries: 30
-  delay: 10
-  failed_when: false
-
-- name: Get ArgoCD admin password
-  command: >
-    oc get secret openshift-gitops-cluster -n openshift-gitops
-    -o jsonpath='{.data.admin\.password}' | base64 -d
-  register: argocd_password
-  changed_when: false
-  when: argocd_instance.rc == 0
-
-- name: Display ArgoCD access information
-  debug:
-    msg:
-      - "ArgoCD Console: https://openshift-gitops-server-openshift-gitops.apps.{{ cluster_info.api_server_url | regex_replace('https://api\\.', '') | regex_replace(':6443', '') }}"
-      - "Admin Password: {{ argocd_password.stdout }}"
+- name: Wait for Operator to be ready
+  include_tasks: wait_operator.yml
