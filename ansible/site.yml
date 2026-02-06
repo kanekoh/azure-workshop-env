@@ -37,10 +37,11 @@
       debug:
         msg: "Logged in as: {{ oc_whoami.stdout }}"
 
-    - name: Include HTPasswd IDP configuration
-      include_role:
-        name: openshift_idp
-      when: oc_whoami.rc == 0
+    # HTPasswd IDP configuration - DISABLED (using kubeadmin only)
+    # - name: Include HTPasswd IDP configuration
+    #   include_role:
+    #     name: openshift_idp
+    #   when: oc_whoami.rc == 0
 
     - name: Include OpenShift GitOps installation
       include_role:

@@ -10,6 +10,11 @@ master_subnet_address_prefixes  = ["10.0.1.0/24"]
 worker_subnet_name              = "aro-worker-subnet"
 worker_subnet_address_prefixes  = ["10.0.2.0/24"]
 
+# Optional: ARO RP service principal object ID (use if azuread lookup fails)
+# aro_rp_service_principal_object_id = ""
+
+# Optional: ARO RP service principal client ID (default is the documented ARO RP app ID)
+
 tags = {
   Environment = "development"
   Project     = "mta-workshop"

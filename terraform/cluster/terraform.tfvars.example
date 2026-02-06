@@ -7,8 +7,8 @@ worker_subnet_id    = "/subscriptions/.../resourceGroups/aro-rg/providers/Micros
 
 # Cluster configuration
 cluster_name = "mta-aro"
-domain       = "" # Optional: custom domain
-ocp_version  = "4.14"
+domain       = "" # Required: domain name (will be generated from GUID if not provided)
+ocp_version  = "4.19.20"  # OpenShift version in x.y.z format
 
 # Node configuration
 master_vm_size   = "Standard_D8s_v3"
@@ -20,6 +20,10 @@ worker_count     = 3
 # Network CIDR
 pod_cidr     = "10.128.0.0/14"
 service_cidr = "172.30.0.0/16"
+
+# Service Principal client secret (required)
+# This should be set from ARM_CLIENT_SECRET or PASSWORD environment variable
+service_principal_client_secret = "your-client-secret"
 
 # Pull secret (optional, can be set via environment variable)
 # pull_secret = ""

@@ -31,14 +31,21 @@ if [ -n "${SUBSCRIPTION:-}" ] && [ -z "${ARM_SUBSCRIPTION_ID:-}" ]; then
   export ARM_SUBSCRIPTION_ID="$SUBSCRIPTION"
 fi
 if [ -n "${TENANT:-}" ] && [ -z "${ARM_TENANT_ID:-}" ]; then
-  # If TENANT is a domain name, try to get tenant ID from Azure CLI
+  # If TENANT is a domain name, try to get tenant ID using Service Principal login
   if [[ ! "$TENANT" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]]; then
-    # It's a domain name, get tenant ID from Azure
-    TENANT_ID=$(az account show --query tenantId -o tsv 2>/dev/null || echo "")
-    if [ -n "$TENANT_ID" ]; then
-      export ARM_TENANT_ID="$TENANT_ID"
+    # It's a domain name, try to get tenant ID using Service Principal
+    if [ -n "${ARM_CLIENT_ID:-}" ] && [ -n "${ARM_CLIENT_SECRET:-}" ] && [ -n "${ARM_SUBSCRIPTION_ID:-}" ]; then
+      echo -e "${GREEN}Resolving tenant domain to ID using Service Principal...${NC}"
+      TENANT_ID=$(az login --service-principal -u "$ARM_CLIENT_ID" -p "$ARM_CLIENT_SECRET" --tenant "$TENANT" --query tenantId -o tsv 2>/dev/null || echo "")
+      if [ -n "$TENANT_ID" ]; then
+        export ARM_TENANT_ID="$TENANT_ID"
+        echo -e "${GREEN}Tenant ID resolved: $TENANT_ID${NC}"
+      else
+        echo -e "${YELLOW}Warning: Could not resolve tenant domain to ID. You may need to set TENANT to the tenant ID (GUID) instead of domain name.${NC}"
+        export ARM_TENANT_ID="$TENANT"
+      fi
     else
-      echo -e "${YELLOW}Warning: Could not resolve tenant domain to ID. Using domain name as-is.${NC}"
+      echo -e "${YELLOW}Warning: TENANT is a domain name but Service Principal credentials are not available. Using domain name as-is.${NC}"
       export ARM_TENANT_ID="$TENANT"
     fi
   else
@@ -58,11 +65,25 @@ for cmd in terraform az; do
     fi
 done
 
-# Check Azure CLI authentication
-echo -e "${GREEN}Checking Azure CLI authentication...${NC}"
-if ! az account show &> /dev/null; then
-    echo -e "${YELLOW}Warning: Azure CLI is not authenticated. Please run 'az login'${NC}"
-    exit 1
+# Check Azure authentication
+echo -e "${GREEN}Checking Azure authentication...${NC}"
+# If Service Principal is configured, we don't need az login
+if [ -n "${ARM_CLIENT_ID:-}" ] && [ -n "${ARM_CLIENT_SECRET:-}" ] && [ -n "${ARM_TENANT_ID:-}" ] && [ -n "${ARM_SUBSCRIPTION_ID:-}" ]; then
+    echo -e "${GREEN}Service Principal authentication configured. Skipping Azure CLI login check.${NC}"
+    # Optionally, login with Service Principal for az commands (for cluster management)
+    if ! az account show &> /dev/null; then
+        echo -e "${GREEN}Logging in with Service Principal for Azure CLI commands...${NC}"
+        az login --service-principal -u "$ARM_CLIENT_ID" -p "$ARM_CLIENT_SECRET" --tenant "$ARM_TENANT_ID" > /dev/null 2>&1 || true
+    fi
+else
+    # If Service Principal is not configured, check Azure CLI authentication
+    if ! az account show &> /dev/null; then
+        echo -e "${YELLOW}Warning: Azure CLI is not authenticated and Service Principal is not configured.${NC}"
+        echo -e "${YELLOW}Please either:${NC}"
+        echo -e "${YELLOW}  1. Run 'az login' for Azure CLI authentication, or${NC}"
+        echo -e "${YELLOW}  2. Set Service Principal credentials (CLIENT_ID, PASSWORD, TENANT, SUBSCRIPTION)${NC}"
+        exit 1
+    fi
 fi
 
 # Set default values if not set
@@ -103,16 +124,9 @@ else
         echo "Planning Terraform destruction..."
         terraform plan -destroy -out=tfplan
         
-        echo -e "${YELLOW}Do you want to proceed with cluster destruction? (yes/no)${NC}"
-        read -r response
-        if [ "$response" != "yes" ]; then
-            echo "Cluster destruction cancelled."
-            exit 0
-        fi
-        
-        # Destroy cluster
-        echo "Destroying ARO cluster (this may take 20-40 minutes)..."
-        terraform apply -destroy tfplan
+        # Destroy cluster (auto-approve)
+        echo "Destroying ARO cluster (this may take 20-40 minutes, auto-approve)..."
+        terraform apply -destroy -auto-approve tfplan
         
         # Wait for cluster deletion to complete
         echo -e "${GREEN}Waiting for cluster deletion to complete...${NC}"
@@ -150,20 +164,26 @@ else
         terraform init
     fi
     
+    # Check if resource group was created by Terraform
+    RG_CREATED_BY_TERRAFORM=$(terraform state show -no-color azurerm_resource_group.main[0] 2>/dev/null | grep -q "azurerm_resource_group.main" && echo "yes" || echo "no")
+    
+    # Check if resource group was created by Terraform (by checking if resource_group_create was true)
+    # We need to check the terraform.tfvars or state to see if resource_group_create was true
+    RG_CREATED=$(terraform state list 2>/dev/null | grep -q "azurerm_resource_group.main" && echo "yes" || echo "no")
+    
     # Plan destruction
     echo "Planning Terraform destruction..."
     terraform plan -destroy -out=tfplan
     
-    echo -e "${YELLOW}Do you want to proceed with network destruction? (yes/no)${NC}"
-    read -r response
-    if [ "$response" != "yes" ]; then
-        echo "Network destruction cancelled."
-        exit 0
-    fi
+    # Destroy network (auto-approve)
+    echo "Destroying network infrastructure (auto-approve)..."
+    terraform apply -destroy -auto-approve tfplan
     
-    # Destroy network
-    echo "Destroying network infrastructure..."
-    terraform apply -destroy tfplan
+    # Note: If resource group was created by Terraform, it will be deleted automatically
+    # If resource group was pre-existing, it will remain (as intended)
+    if [ "$RG_CREATED" = "no" ]; then
+        echo -e "${GREEN}Note: Resource group '$AZURE_RESOURCE_GROUP' was pre-existing and was not deleted.${NC}"
+    fi
 fi
 
 echo -e "${GREEN}=== Destruction Complete ===${NC}"

@@ -1,0 +1,125 @@
+---
+# Tasks for installing OpenShift GitOps Operator
+
+- name: Check available catalog sources
+  kubernetes.core.k8s_info:
+    api_version: operators.coreos.com/v1
+    kind: CatalogSource
+    namespace: openshift-marketplace
+  register: catalog_sources
+  failed_when: false
+
+- name: Display available catalog sources
+  debug:
+    msg: "Available catalog sources: {{ catalog_sources.resources | map(attribute='metadata.name') | list }}"
+
+- name: Check if redhat-operators catalog source exists
+  set_fact:
+    redhat_operators_exists: "{{ catalog_sources.resources | selectattr('metadata.name', 'equalto', 'redhat-operators') | list | length > 0 }}"
+
+- name: Create redhat-operators catalog source if it doesn't exist
+  kubernetes.core.k8s:
+    name: redhat-operators
+    namespace: openshift-marketplace
+    api_version: operators.coreos.com/v1
+    kind: CatalogSource
+    state: present
+    definition:
+      spec:
+        sourceType: grpc
+        image: registry.redhat.io/redhat/redhat-operator-index:v4.19
+        displayName: Red Hat Operators
+        publisher: Red Hat
+        updateStrategy:
+          registryPoll:
+            interval: 30m
+  when: not redhat_operators_exists | bool
+  register: catalog_source_result
+  failed_when: false
+
+- name: Wait for catalog source to be ready (if created)
+  kubernetes.core.k8s_info:
+    api_version: operators.coreos.com/v1
+    kind: CatalogSource
+    namespace: openshift-marketplace
+    name: redhat-operators
+  register: catalog_source_status
+  until: 
+    - catalog_source_status.resources | length > 0
+    - catalog_source_status.resources[0].status.connectionState is defined
+    - catalog_source_status.resources[0].status.connectionState.lastObservedState == "READY"
+  retries: 20
+  delay: 10
+  failed_when: false
+  when: not redhat_operators_exists | bool and catalog_source_result.changed | default(false) | bool
+
+- name: Check if OpenShift GitOps Operator is already installed
+  kubernetes.core.k8s_info:
+    api_version: operators.coreos.com/v1alpha1
+    kind: Subscription
+    namespace: "{{ openshift_gitops.operator_namespace }}"
+    name: "{{ openshift_gitops.operator_name }}"
+  register: operator_subscription
+  failed_when: false
+  changed_when: false
+
+- name: Create Namespace for Operator if it doesn't exist
+  kubernetes.core.k8s:
+    name: "{{ openshift_gitops.operator_namespace }}"
+    api_version: v1
+    kind: Namespace
+    state: present
+    definition:
+      metadata:
+        name: "{{ openshift_gitops.operator_namespace }}"
+        labels:
+          openshift.io/cluster-monitoring: "true"
+  when: operator_subscription.resources | length == 0
+  register: namespace_result
+
+- name: Add cluster-monitoring label to existing Namespace
+  kubernetes.core.k8s:
+    name: "{{ openshift_gitops.operator_namespace }}"
+    api_version: v1
+    kind: Namespace
+    state: present
+    definition:
+      metadata:
+        name: "{{ openshift_gitops.operator_namespace }}"
+        labels:
+          openshift.io/cluster-monitoring: "true"
+  when: operator_subscription.resources | length > 0
+
+- name: Create OperatorGroup for OpenShift GitOps Operator
+  kubernetes.core.k8s:
+    name: openshift-gitops-operator-group
+    namespace: "{{ openshift_gitops.operator_namespace }}"
+    api_version: operators.coreos.com/v1
+    kind: OperatorGroup
+    state: present
+    definition:
+      spec:
+        targetNamespaces: []
+  when: operator_subscription.resources | length == 0
+
+- name: Create Subscription for OpenShift GitOps Operator
+  kubernetes.core.k8s:
+    name: "{{ openshift_gitops.operator_name }}"
+    namespace: "{{ openshift_gitops.operator_namespace }}"
+    api_version: operators.coreos.com/v1alpha1
+    kind: Subscription
+    state: present
+    definition:
+      spec:
+        channel: "{{ openshift_gitops.operator_channel }}"
+        name: "{{ openshift_gitops.operator_name }}"
+        source: "{{ openshift_gitops.operator_source }}"
+        sourceNamespace: openshift-marketplace
+        installPlanApproval: Automatic
+  when: operator_subscription.resources | length == 0
+  register: subscription_result
+
+- name: Display subscription creation result
+  debug:
+    msg: "OpenShift GitOps Operator subscription {{ 'created' if subscription_result.changed else 'already exists' }}"
+
