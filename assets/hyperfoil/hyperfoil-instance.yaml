@@ -1,0 +1,10 @@
+# Hyperfoil コントローラー用インスタンス（Operator インストール時に install-hyperfoil-operator.sh から自動適用される）
+# 手動で適用する場合: oc create namespace hyperfoil && oc apply -f hyperfoil-instance.yaml
+# コントローラーと Route ができたら、run-benchmark.sh は --hyperfoil-url 未指定で URL を自動検出できる
+---
+apiVersion: hyperfoil.io/v1alpha2
+kind: Hyperfoil
+metadata:
+  name: hyperfoil
+  namespace: hyperfoil
+spec: {}

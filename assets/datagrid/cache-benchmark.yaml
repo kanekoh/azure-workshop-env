@@ -1,0 +1,28 @@
+# ベンチマーク用キャッシュのサンプル（Data Grid Cache CR）
+# 用途: Hyperfoil による PUT/DELETE 負荷試験。分散・同期・owners=2・統計有効。
+# 適用: oc apply -f cache-benchmark.yaml
+# 注意: spec.clusterName と metadata.namespace を環境に合わせて変更すること。
+# template は XML または YAML 形式（Operator が両方サポート）。本ファイルは YAML 形式で記載。
+# 統計を有効にしたのに API が -1 を返す場合: 既存キャッシュが CR 適用前に別経路で作られている。
+#   → ./run.sh datagrid delete-cache --rest-url https://localhost:11222 でキャッシュ削除後、Operator が再作成。
+# updateStrategy: Recreate で、template 変更時はキャッシュを削除してから再作成する。
+---
+apiVersion: infinispan.org/v2alpha1
+kind: Cache
+metadata:
+  name: benchmark-cache
+  namespace: datagrid
+spec:
+  clusterName: infinispan
+  name: benchmark
+  updateStrategy: Recreate
+  template: |
+    distributedCache:
+      mode: "SYNC"
+      owners: "2"
+      statistics: "true"
+      encoding:
+        key:
+          mediaType: "application/x-protostream"
+        value:
+          mediaType: "application/x-protostream"

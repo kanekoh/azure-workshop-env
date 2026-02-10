@@ -2,7 +2,7 @@
 env.sh
 *.env
 
-# Terraform
+# Terraform（plan は機密・一時的なので Git に含めない）
 *.tfstate
 *.tfstate.*
 .terraform/
@@ -10,6 +10,7 @@ env.sh
 terraform.tfvars
 terraform.tfplan
 *.tfplan
+**/tfplan
 
 # Ansible
 ansible/inventory/cluster_info.json

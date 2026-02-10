@@ -1,0 +1,25 @@
+# Data Grid (Infinispan) クラスタのベース CR
+# パラメタは deploy-datagrid.sh で置換する
+# プレースホルダ: __DATAGRID_VERSION__, __REPLICAS__, __ENDPOINT_AUTH__
+---
+apiVersion: infinispan.org/v1
+kind: Infinispan
+metadata:
+  name: __CLUSTER_NAME__
+  namespace: __NAMESPACE__
+  labels:
+    app: datagrid
+spec:
+  replicas: __REPLICAS__
+  version: __DATAGRID_VERSION__
+  service:
+    type: DataGrid
+  security:
+    endpointAuthentication: __ENDPOINT_AUTH__
+    __ENDPOINT_ENCRYPTION_BLOCK__
+  # 将来的な拡張用のコメント例:
+  # container:
+  #   cpu: "2000m"
+  #   memory: 2Gi
+  # logging:
+  #   categories: ...
